@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "Code Server Terminal",
-    "slug": "code-server-terminal",
+    "name": "Mix-OS",
+    "slug": "mix-os",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "codeserver",
+    "scheme": "mixos",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.codeserver.terminal"
+      "bundleIdentifier": "com.mixos.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +19,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.codeserver.terminal",
+      "package": "com.mixos.app",
       "versionCode": 1,
       "permissions": [
         "android.permission.INTERNET",
@@ -48,10 +48,13 @@
       "expo-web-browser"
     ],
     "assetBundlePatterns": [
-      "**/*",
-      "assets/wasm/**/*",
-      "assets/kernel/**/*",
-      "assets/rootfs/**/*"
+      "assets/images/*",
+      "assets/fonts/*",
+      "assets/kernel/*",
+      "assets/rootfs/*",
+      "assets/code-server/*",
+      "assets/wasm/*",
+      "assets/busybox/*"
     ],
     "extra": {
       "eas": {
