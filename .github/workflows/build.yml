@@ -57,6 +57,26 @@ jobs:
       - name: Run type checking
         run: npm run check:types
 
+      - name: Configure Android credentials
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            mkdir -p android
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/keystore.jks
+            echo "Keystore written to android/keystore.jks"
+            echo "EXPO_ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> $GITHUB_ENV
+            echo "EXPO_ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> $GITHUB_ENV
+            echo "EXPO_ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> $GITHUB_ENV
+            echo "ANDROID_KEYSTORE_PATH=android/keystore.jks" >> $GITHUB_ENV
+          else
+            echo "No ANDROID_KEYSTORE_BASE64 secret provided; skipping keystore setup"
+          fi
+
 
       - name: Setup EAS
         run: npm install -g eas-cli
