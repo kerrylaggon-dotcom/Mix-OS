@@ -4,26 +4,35 @@
     "appVersionSource": "local"
   },
   "build": {
-    "development": {
-      "channel": "development",
+    "preview": {
       "android": {
         "buildType": "apk",
-        "distribution": "internal"
+        "resourceClass": "large"
       }
     },
-    "preview": {
-      "channel": "preview",
+    "preview2": {
       "android": {
-        "buildType": "apk",
-        "distribution": "internal"
+        "buildType": "apk"
+      }
+    },
+    "preview3": {
+      "android": {
+        "buildType": "apk"
       }
     },
     "production": {
-      "channel": "production",
       "android": {
-        "buildType": "apk",
-        "distribution": "store"
+        "buildType": "app-bundle",
+        "resourceClass": "large"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "service-account-key.json",
+        "track": "internal"
       }
     }
   }
-      }
+}
