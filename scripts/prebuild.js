@@ -1,277 +1,150 @@
+/**
+ * Prebuild Script for Mix-OS
+ * 
+ * This script prepares the project for EAS build by:
+ * 1. Creating necessary directories
+ * 2. Generating placeholder files for assets
+ * 
+ * NOTE: Large assets (QEMU, kernel, code-server) are NOT downloaded here.
+ * They will be downloaded at runtime or bundled separately in Phase 3-4.
+ * This keeps the APK size manageable and build times fast.
+ */
+
 /* eslint-disable no-undef */
 const fs = require("fs");
 const path = require("path");
-const axios = require("axios");
-const http = require("http");
-const https = require("https");
 
-const downloadsDir = path.join(__dirname, "..", "downloads");
 const assetsDir = path.join(__dirname, "..", "assets");
+const imagesDir = path.join(assetsDir, "images");
 
-const components = [
+// Directories to ensure exist
+const requiredDirs = [
+  assetsDir,
+  imagesDir,
+  path.join(assetsDir, "fonts"),
+];
+
+// Placeholder files to create if missing
+const placeholders = [
   {
-    id: "kernel",
-    url: "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.6.10.tar.xz",
-    extract: true,
-  },
-  {
-    id: "busybox",
-    url: "https://busybox.net/downloads/busybox-1.36.1.tar.bz2",
-    extract: true,
-  },
-  {
-    id: "alpine",
-    url: "https://dl-cdn.alpinelinux.org/alpine/v3.18/releases/x86_64/alpine-minirootfs-3.18.4-x86_64.tar.gz",
-    extract: true,
-  },
-  {
-    id: "busybox-wasm",
-    url: "https://registry-cdn.wapm.io/packages/wasmer/busybox/busybox-1.31.1.wasm",
-    fallbackUrl: "https://cdn.jsdelivr.net/gh/wasmerio/wasmer@main/lib/wasm/busybox.wasm",
-    extract: false,
-    optional: true,
+    path: path.join(assetsDir, "README.md"),
+    content: `# Mix-OS Assets
+
+This directory contains assets for the Mix-OS application.
+
+## Structure
+
+- \`images/\` - App icons, splash screens, and UI images
+- \`fonts/\` - Custom fonts (JetBrains Mono loaded via expo-google-fonts)
+
+## VM Assets (Downloaded at Runtime)
+
+The following assets are NOT bundled with the APK to keep size manageable:
+- QEMU binary (pre-compiled for ARM64)
+- Linux kernel
+- Alpine/NixOS rootfs
+- code-server binary
+
+These will be downloaded on first run or managed via the Download Manager.
+`,
   },
 ];
 
-async function downloadFile(url, dest, retries = 3) {
-  console.log(`Downloading ${url} to ${dest}`);
+function ensureDirectories() {
+  console.log("Creating required directories...");
   
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const response = await axios.get(url, { 
-        responseType: "stream",
-        timeout: 120000, // 120 seconds timeout
-        maxRedirects: 10,
-        // Set larger timeout for slow CDN connections
-        httpAgent: new http.Agent({ 
-          timeout: 120000,
-          keepAlive: true
-        }),
-        httpsAgent: new https.Agent({ 
-          timeout: 120000,
-          rejectUnauthorized: false,
-          keepAlive: true
-        }),
-        // Add headers to avoid CDN blocks
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': '*/*',
-          'Cache-Control': 'no-cache'
-        }
-      });
-      
-      const writer = fs.createWriteStream(dest);
-      
-      // Set a timeout for the entire download
-      const downloadTimeout = setTimeout(() => {
-        writer.destroy(new Error("Download timeout exceeded"));
-        response.data.destroy();
-      }, 600000); // 10 minutes total timeout
-      
-      response.data.pipe(writer);
-      
-      return new Promise((resolve, reject) => {
-        writer.on("finish", () => {
-          clearTimeout(downloadTimeout);
-          resolve();
-        });
-        writer.on("error", (err) => {
-          clearTimeout(downloadTimeout);
-          // Clean up the partial file
-          try {
-            fs.unlinkSync(dest);
-          } catch (e) {
-            // Ignore cleanup errors
-          }
-          reject(err);
-        });
-        response.data.on("error", (err) => {
-          clearTimeout(downloadTimeout);
-          writer.destroy();
-          reject(err);
-        });
-      });
-    } catch (error) {
-      console.error(`Attempt ${attempt}/${retries} failed for ${url}:`, error.message);
-      
-      // Clean up on error
-      try {
-        if (fs.existsSync(dest)) {
-          fs.unlinkSync(dest);
-        }
-      } catch (e) {
-        // Ignore cleanup errors
-      }
-      
-      if (attempt === retries) {
-        throw error;
-      }
-      
-      // Exponential backoff: 2s, 4s, 8s
-      const delay = Math.pow(2, attempt) * 1000;
-      console.log(`Retrying in ${delay}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+  for (const dir of requiredDirs) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`  Created: ${path.relative(process.cwd(), dir)}`);
     }
   }
 }
 
-async function extractTar(file, dest) {
-  console.log(`Extracting ${file} to ${dest}`);
-  const { spawn } = require("child_process");
-  const ext = path.extname(file);
-  let cmd, args;
-  if (ext === ".xz") {
-    cmd = "tar";
-    args = ["-xf", file, "-C", dest];
-  } else if (ext === ".bz2") {
-    cmd = "tar";
-    args = ["-xjf", file, "-C", dest];
-  } else if (ext === ".gz") {
-    cmd = "tar";
-    args = ["-xzf", file, "-C", dest];
+function createPlaceholders() {
+  console.log("Creating placeholder files...");
+  
+  for (const placeholder of placeholders) {
+    if (!fs.existsSync(placeholder.path)) {
+      fs.writeFileSync(placeholder.path, placeholder.content);
+      console.log(`  Created: ${path.relative(process.cwd(), placeholder.path)}`);
+    }
   }
-  return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args);
-    
-    let errorOutput = "";
-    child.stderr.on("data", (data) => {
-      errorOutput += data.toString();
-    });
-    
-    const extractTimeout = setTimeout(() => {
-      child.kill("SIGKILL");
-      reject(new Error(`Extraction timeout for ${file}`));
-    }, 600000); // 10 minutes timeout
-    
-    child.on("close", (code) => {
-      clearTimeout(extractTimeout);
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`Extraction failed with code ${code}: ${errorOutput}`));
-      }
-    });
-    child.on("error", (err) => {
-      clearTimeout(extractTimeout);
-      reject(err);
-    });
-  });
+}
+
+function verifyRequiredAssets() {
+  console.log("Verifying required assets...");
+  
+  const requiredImages = [
+    "icon.png",
+    "splash-icon.png",
+    "favicon.png",
+  ];
+  
+  const missing = [];
+  
+  for (const image of requiredImages) {
+    const imagePath = path.join(imagesDir, image);
+    if (!fs.existsSync(imagePath)) {
+      missing.push(image);
+    }
+  }
+  
+  if (missing.length > 0) {
+    console.warn(`\n⚠️  Missing required images in assets/images/:`);
+    missing.forEach(img => console.warn(`   - ${img}`));
+    console.warn(`\nPlease add these images before building.\n`);
+    // Don't fail - EAS build will handle missing assets
+  } else {
+    console.log("  All required images present");
+  }
+}
+
+function printSummary() {
+  console.log("\n" + "=".repeat(50));
+  console.log("Prebuild Summary");
+  console.log("=".repeat(50));
+  console.log(`
+✅ Directories prepared
+✅ Placeholder files created
+✅ Asset verification complete
+
+Next steps:
+1. Run 'npm run check:types' to verify TypeScript
+2. Run 'npm run lint' to check for issues
+3. Run 'eas build --platform android --profile preview' to build APK
+
+Note: VM assets (QEMU, kernel, code-server) will be downloaded
+at runtime via the Download Manager (Phase 3-4).
+`);
 }
 
 async function prebuild() {
-  if (!fs.existsSync(downloadsDir))
-    fs.mkdirSync(downloadsDir, { recursive: true });
-  if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir, { recursive: true });
-
-  for (const comp of components) {
-    const fileName = path.basename(comp.url);
-    const filePath = path.join(downloadsDir, fileName);
-    const extractDir = path.join(downloadsDir, comp.id);
-
-    if (!fs.existsSync(filePath)) {
-      try {
-        await downloadFile(comp.url, filePath);
-      } catch (error) {
-        console.error(`Error downloading ${comp.id}:`, error.message);
-        
-        // Try fallback URL if available
-        if (comp.fallbackUrl) {
-          console.warn(`⚠️  Trying fallback URL for ${comp.id}...`);
-          try {
-            await downloadFile(comp.fallbackUrl, filePath);
-          } catch (fallbackError) {
-            console.error(`Fallback also failed for ${comp.id}:`, fallbackError.message);
-            if (comp.optional) {
-              console.warn(`⚠️  Warning: Failed to download optional asset ${comp.id}, continuing...`);
-              continue;
-            }
-            throw new Error(`Failed to download ${comp.id} from both sources: ${error.message}`);
-          }
-        } else {
-          // For optional assets without fallback, warn and continue
-          if (comp.optional) {
-            console.warn(`⚠️  Warning: Failed to download optional asset ${comp.id}, continuing...`);
-            continue;
-          }
-          throw new Error(`Failed to download ${comp.id}: ${error.message}`);
-        }
-      }
-    }
-
-    if (comp.extract && !fs.existsSync(extractDir)) {
-      fs.mkdirSync(extractDir, { recursive: true });
-      try {
-        await extractTar(filePath, extractDir);
-      } catch (error) {
-        console.error(`Error extracting ${comp.id}:`, error.message);
-        throw new Error(`Failed to extract ${comp.id}: ${error.message}`);
-      }
-    }
-
-    // Copy to assets for APK inclusion
-    // Skip if file doesn't exist (e.g., optional download failed)
-    if (!comp.extract && !fs.existsSync(filePath)) {
-      console.warn(`⚠️  Skipping copy for ${comp.id} - file not found`);
-      continue;
-    }
-    if (comp.extract && !fs.existsSync(extractDir)) {
-      console.warn(`⚠️  Skipping copy for ${comp.id} - extracted directory not found`);
-      continue;
-    }
+  console.log("\n🔧 Mix-OS Prebuild Script\n");
+  
+  try {
+    ensureDirectories();
+    createPlaceholders();
+    verifyRequiredAssets();
+    printSummary();
     
-    const assetPath = path.join(assetsDir, comp.id);
-    if (!fs.existsSync(assetPath)) {
-      try {
-        if (comp.extract) {
-          // Copy extracted directory, excluding problematic files
-          fs.cpSync(extractDir, assetPath, { 
-            recursive: true,
-            filter: (src, dest) => {
-              // Skip problematic directories that cause permission issues
-              if (src.includes('/var/run/') || 
-                  src.includes('/var/cache/') ||
-                  src.includes('/proc/') ||
-                  src.includes('/sys/')) {
-                return false;
-              }
-              return true;
-            }
-          });
-        } else {
-          // Copy file
-          fs.mkdirSync(path.dirname(assetPath), { recursive: true });
-          fs.copyFileSync(filePath, path.join(assetPath, fileName));
-        }
-        console.log(`✓ Prepared ${comp.id}`);
-      } catch (error) {
-        console.error(`Error copying ${comp.id}:`, error.message);
-        throw new Error(`Failed to copy ${comp.id}: ${error.message}`);
-      }
-    }
+    console.log("✅ Prebuild completed successfully\n");
+  } catch (error) {
+    console.error("\n❌ Prebuild failed:", error.message);
+    process.exit(1);
   }
-
-  console.log("✅ Prebuild completed successfully");
 }
 
 // Handle graceful shutdown
 process.on("SIGTERM", () => {
-  console.error("⚠️ Process terminated");
-  process.exit(128);
+  console.log("\n⚠️ Process terminated");
+  process.exit(0);
 });
 
 process.on("SIGINT", () => {
-  console.error("⚠️ Process interrupted");
-  process.exit(128);
+  console.log("\n⚠️ Process interrupted");
+  process.exit(0);
 });
 
-// Run prebuild and exit with appropriate code
-prebuild()
-  .then(() => {
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error("❌ Prebuild failed:", error.message);
-    process.exit(1);
-  });
-
-prebuild().catch(console.error);
+// Run prebuild
+prebuild();

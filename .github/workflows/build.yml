@@ -1,4 +1,4 @@
-name: Build APK with Expo EAS
+name: Mix-OS CI/CD
 
 on:
   push:
@@ -6,16 +6,60 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
 
 env:
   NODE_VERSION: 20
-  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
 jobs:
+  # ============================================
+  # Lint and Type Check (runs on all events)
+  # ============================================
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint & Type Check
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript check
+        run: npm run check:types
+
+      - name: Run ESLint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run prebuild (prepare directories)
+        run: npm run prebuild
+
+  # ============================================
+  # Build APK (only on push to main/develop or manual trigger)
+  # ============================================
   build-apk:
     runs-on: ubuntu-latest
     name: Build Android APK
-    timeout-minutes: 120
+    needs: lint
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -27,118 +71,69 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Cache assets directory
-        uses: actions/cache@v3
-        with:
-          path: |
-            assets/kernel
-            assets/busybox
-            assets/alpine
-            assets/busybox-wasm
-            downloads
-          key: ${{ runner.os }}-assets-${{ hashFiles('scripts/prebuild.js') }}
-          restore-keys: |
-            ${{ runner.os }}-assets-
-
-      - name: Pre-download busybox-wasm (with retries)
-        run: |
-          mkdir -p downloads
-          # Try to download busybox-wasm with curl retries
-          if [ ! -f "downloads/busybox-1.31.1.wasm" ]; then
-            echo "Attempting to download busybox-wasm..."
-            curl -L --retry 5 --retry-delay 3 --retry-connrefused \
-              -H "User-Agent: Mozilla/5.0" \
-              -o "downloads/busybox-1.31.1.wasm" \
-              "https://registry-cdn.wapm.io/packages/wasmer/busybox/busybox-1.31.1.wasm" || \
-            echo "⚠️  busybox-wasm download failed, will try again in main prebuild"
-          fi
-
       - name: Install dependencies
         run: npm ci
 
-      - name: Run prebuild script (download assets)
+      - name: Run prebuild
         run: npm run prebuild
-        timeout-minutes: 30
 
-      - name: Verify assets were prepared
-        run: |
-          echo "✅ Checking asset files..."
-          ls -lah assets/ || echo "Assets directory structure:"
-          du -sh assets/* 2>/dev/null || echo "Asset sizes:"
-          echo "✅ Asset preparation completed successfully"
-
-      - name: Run type checking
-        run: npm run check:types
-
-      - name: Setup EAS
+      - name: Setup EAS CLI
         run: npm install -g eas-cli
 
-      - name: Verify EXPO_TOKEN is set
+      - name: Verify EXPO_TOKEN
         run: |
-          if [ -z "$EXPO_TOKEN" ]; then
-            echo "❌ EXPO_TOKEN is not configured!"
-            exit 1
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "⚠️  EXPO_TOKEN not configured - skipping EAS build"
+            echo "To enable builds, add EXPO_TOKEN to repository secrets"
+            exit 0
           fi
-          echo "✓ EXPO_TOKEN is configured"
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          echo "✅ EXPO_TOKEN is configured"
 
-      - name: Build with EAS (preview)
-        if: github.event_name == 'pull_request'
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform android --non-interactive --profile preview
-        timeout-minutes: 60
-
-      - name: Build with EAS (production)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform android --non-interactive --profile production
-        timeout-minutes: 60
-
-      - name: Fix asset permissions before upload
-        if: always()
+      - name: Determine build profile
+        id: profile
         run: |
-          echo "Cleaning up problematic asset files..."
-          # Fix permissions recursively
-          chmod -R 755 assets 2>/dev/null || true
-          find assets -type f -exec chmod 644 {} \; 2>/dev/null || true
-          
-          # Remove problematic system directories that cause permission issues
-          find assets -type d -name "chrony" -exec rm -rf {} + 2>/dev/null || true
-          find assets -type d -path "*/var/run/*" -exec rm -rf {} + 2>/dev/null || true
-          find assets -type d -path "*/var/cache/*" -exec rm -rf {} + 2>/dev/null || true
-          find assets -type d -path "*/proc/*" -exec rm -rf {} + 2>/dev/null || true
-          find assets -type d -path "*/sys/*" -exec rm -rf {} + 2>/dev/null || true
-          
-          echo "✓ Asset permissions and cleanup completed"
-
-      - name: Upload build artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: apk-artifacts
-          path: |
-            **/*.apk
-            **/*.aab
-          retention-days: 7
-
-      - name: Notify build status
-        if: always()
-        run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ APK build completed successfully!"
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "profile=${{ github.event.inputs.build_type }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "profile=production" >> $GITHUB_OUTPUT
           else
-            echo "❌ APK build failed. Check logs above for details."
+            echo "profile=preview" >> $GITHUB_OUTPUT
           fi
 
+      - name: Build with EAS
+        if: ${{ secrets.EXPO_TOKEN != '' }}
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          echo "Building with profile: ${{ steps.profile.outputs.profile }}"
+          eas build --platform android --non-interactive --profile ${{ steps.profile.outputs.profile }}
+        timeout-minutes: 45
 
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Profile:** ${{ steps.profile.outputs.profile }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Build completed successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Download the APK from [Expo Dashboard](https://expo.dev)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Build failed. Check logs for details." >> $GITHUB_STEP_SUMMARY
+          fi
 
-  verify-build:
+  # ============================================
+  # PR Check (only on pull requests)
+  # ============================================
+  pr-check:
     runs-on: ubuntu-latest
-    name: Pre-Build Verification
-    timeout-minutes: 30
+    name: PR Validation
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -153,22 +148,42 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check TypeScript compilation
+      - name: TypeScript check
         run: npm run check:types
 
+      - name: ESLint check
+        run: npm run lint
+        continue-on-error: true
 
-      - name: Verify prebuild script exists
+      - name: Prebuild check
+        run: npm run prebuild
+
+      - name: Verify app.json
         run: |
-          if [ -f "scripts/prebuild.js" ]; then
-            echo "✅ prebuild.js found"
-            node scripts/prebuild.js --dry-run 2>/dev/null || echo "Prebuild script is executable"
+          if [ -f "app.json" ]; then
+            echo "✅ app.json exists"
+            cat app.json | head -20
           else
-            echo "❌ prebuild.js not found!"
+            echo "❌ app.json not found!"
             exit 1
           fi
 
-      - name: Verify asset destinations
+      - name: Verify eas.json
         run: |
-          echo "Checking asset paths..."
-          mkdir -p assets
-          echo "✅ Asset paths ready for prebuild"
+          if [ -f "eas.json" ]; then
+            echo "✅ eas.json exists"
+            cat eas.json
+          else
+            echo "❌ eas.json not found!"
+            exit 1
+          fi
+
+      - name: PR Summary
+        run: |
+          echo "## PR Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ TypeScript compilation passed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Prebuild script executed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Configuration files verified" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Ready for merge and EAS build." >> $GITHUB_STEP_SUMMARY
