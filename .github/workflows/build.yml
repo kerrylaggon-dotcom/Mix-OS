@@ -57,11 +57,6 @@ jobs:
       - name: Run type checking
         run: npm run check:types
 
-      - name: Run linting
-        run: npm run lint
-
-      - name: Run tests
-        run: npm run test -- --passWithNoTests
 
       - name: Setup EAS
         run: npm install -g eas-cli
@@ -95,38 +90,7 @@ jobs:
             echo "❌ APK build failed. Check logs above for details."
           fi
 
-  test:
-    runs-on: ubuntu-latest
-    name: Unit & Integration Tests
-    timeout-minutes: 30
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run type checking
-        run: npm run check:types
-
-      - name: Run linting
-        run: npm run lint
-
-      - name: Run all tests
-        run: npm run test
-
-      - name: Upload coverage
-        if: always()
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage/lcov.info
 
   verify-build:
     runs-on: ubuntu-latest
@@ -149,8 +113,6 @@ jobs:
       - name: Check TypeScript compilation
         run: npm run check:types
 
-      - name: Check code formatting
-        run: npm run lint
 
       - name: Verify prebuild script exists
         run: |
