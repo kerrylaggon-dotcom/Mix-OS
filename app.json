@@ -49,11 +49,16 @@
     ],
     "assetBundlePatterns": [
       "assets/images/*",
-      "assets/fonts/*"
+      "assets/fonts/*",
+      "assets/kernel/*",
+      "assets/rootfs/*",
+      "assets/code-server/*",
+      "assets/wasm/*",
+      "assets/busybox/*"
     ],
     "extra": {
       "eas": {
-        "projectId": "mix-os"
+        "projectId": "8bce99fb-240f-47e0-9134-7d594df56ef1"
       }
     }
   }
