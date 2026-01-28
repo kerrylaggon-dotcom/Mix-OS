@@ -62,11 +62,15 @@ jobs:
 
       - name: Build with EAS (preview)
         if: github.event_name == 'pull_request'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: eas build --platform android --non-interactive --profile preview
         timeout-minutes: 60
 
       - name: Build with EAS (production)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: eas build --platform android --non-interactive --profile production
         timeout-minutes: 60
 
