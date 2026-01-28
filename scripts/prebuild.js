@@ -2,6 +2,8 @@
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
+const http = require("http");
+const https = require("https");
 
 const downloadsDir = path.join(__dirname, "..", "downloads");
 const assetsDir = path.join(__dirname, "..", "assets");
@@ -37,8 +39,8 @@ async function downloadFile(url, dest) {
       timeout: 60000, // 60 seconds timeout
       maxRedirects: 5,
       // Set larger timeout for slow CDN connections
-      httpAgent: { timeout: 60000 },
-      httpsAgent: { timeout: 60000 }
+      httpAgent: new http.Agent({ timeout: 60000 }),
+      httpsAgent: new https.Agent({ timeout: 60000 })
     });
     
     const writer = fs.createWriteStream(dest);
