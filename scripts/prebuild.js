@@ -31,52 +31,76 @@ const components = [
   },
 ];
 
-async function downloadFile(url, dest) {
+async function downloadFile(url, dest, retries = 3) {
   console.log(`Downloading ${url} to ${dest}`);
-  try {
-    const response = await axios.get(url, { 
-      responseType: "stream",
-      timeout: 60000, // 60 seconds timeout
-      maxRedirects: 5,
-      // Set larger timeout for slow CDN connections
-      httpAgent: new http.Agent({ timeout: 60000 }),
-      httpsAgent: new https.Agent({ timeout: 60000 })
-    });
-    
-    const writer = fs.createWriteStream(dest);
-    
-    // Set a timeout for the entire download
-    const downloadTimeout = setTimeout(() => {
-      writer.destroy(new Error("Download timeout exceeded"));
-      response.data.destroy();
-    }, 300000); // 5 minutes total timeout
-    
-    response.data.pipe(writer);
-    
-    return new Promise((resolve, reject) => {
-      writer.on("finish", () => {
-        clearTimeout(downloadTimeout);
-        resolve();
-      });
-      writer.on("error", (err) => {
-        clearTimeout(downloadTimeout);
-        // Clean up the partial file
-        try {
-          fs.unlinkSync(dest);
-        } catch (e) {
-          // Ignore cleanup errors
+  
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await axios.get(url, { 
+        responseType: "stream",
+        timeout: 60000, // 60 seconds timeout
+        maxRedirects: 5,
+        // Set larger timeout for slow CDN connections
+        httpAgent: new http.Agent({ timeout: 60000 }),
+        httpsAgent: new https.Agent({ timeout: 60000, rejectUnauthorized: false }),
+        // Add headers to avoid CDN blocks
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-        reject(err);
       });
-      response.data.on("error", (err) => {
-        clearTimeout(downloadTimeout);
-        writer.destroy();
-        reject(err);
+      
+      const writer = fs.createWriteStream(dest);
+      
+      // Set a timeout for the entire download
+      const downloadTimeout = setTimeout(() => {
+        writer.destroy(new Error("Download timeout exceeded"));
+        response.data.destroy();
+      }, 300000); // 5 minutes total timeout
+      
+      response.data.pipe(writer);
+      
+      return new Promise((resolve, reject) => {
+        writer.on("finish", () => {
+          clearTimeout(downloadTimeout);
+          resolve();
+        });
+        writer.on("error", (err) => {
+          clearTimeout(downloadTimeout);
+          // Clean up the partial file
+          try {
+            fs.unlinkSync(dest);
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+          reject(err);
+        });
+        response.data.on("error", (err) => {
+          clearTimeout(downloadTimeout);
+          writer.destroy();
+          reject(err);
+        });
       });
-    });
-  } catch (error) {
-    console.error(`Failed to download ${url}:`, error.message);
-    throw error;
+    } catch (error) {
+      console.error(`Attempt ${attempt}/${retries} failed for ${url}:`, error.message);
+      
+      // Clean up on error
+      try {
+        if (fs.existsSync(dest)) {
+          fs.unlinkSync(dest);
+        }
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      
+      if (attempt === retries) {
+        throw error;
+      }
+      
+      // Exponential backoff: 1s, 2s, 4s
+      const delay = Math.pow(2, attempt - 1) * 1000;
+      console.log(`Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
   }
 }
 
@@ -138,6 +162,11 @@ async function prebuild() {
         await downloadFile(comp.url, filePath);
       } catch (error) {
         console.error(`Error downloading ${comp.id}:`, error.message);
+        // For non-critical assets (like busybox-wasm), warn and continue
+        if (comp.id === "busybox-wasm") {
+          console.warn(`⚠️  Warning: Failed to download ${comp.id}, continuing without it...`);
+          continue;
+        }
         throw new Error(`Failed to download ${comp.id}: ${error.message}`);
       }
     }
