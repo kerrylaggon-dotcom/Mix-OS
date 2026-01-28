@@ -26,9 +26,10 @@ const components = [
   },
   {
     id: "busybox-wasm",
-    url: "https://github.com/wasmerio/wasmer/releases/download/3.1.0/wasmer-linux-amd64.tar.gz",
-    extract: true,
-    optional: true,  // Make this optional since CDN is unreliable
+    url: "https://registry-cdn.wapm.io/packages/wasmer/busybox/busybox-1.31.1.wasm",
+    fallbackUrl: "https://cdn.jsdelivr.net/gh/wasmerio/wasmer@main/lib/wasm/busybox.wasm",
+    extract: false,
+    optional: true,
   },
 ];
 
@@ -39,14 +40,23 @@ async function downloadFile(url, dest, retries = 3) {
     try {
       const response = await axios.get(url, { 
         responseType: "stream",
-        timeout: 60000, // 60 seconds timeout
-        maxRedirects: 5,
+        timeout: 120000, // 120 seconds timeout
+        maxRedirects: 10,
         // Set larger timeout for slow CDN connections
-        httpAgent: new http.Agent({ timeout: 60000 }),
-        httpsAgent: new https.Agent({ timeout: 60000, rejectUnauthorized: false }),
+        httpAgent: new http.Agent({ 
+          timeout: 120000,
+          keepAlive: true
+        }),
+        httpsAgent: new https.Agent({ 
+          timeout: 120000,
+          rejectUnauthorized: false,
+          keepAlive: true
+        }),
         // Add headers to avoid CDN blocks
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': '*/*',
+          'Cache-Control': 'no-cache'
         }
       });
       
@@ -56,7 +66,7 @@ async function downloadFile(url, dest, retries = 3) {
       const downloadTimeout = setTimeout(() => {
         writer.destroy(new Error("Download timeout exceeded"));
         response.data.destroy();
-      }, 300000); // 5 minutes total timeout
+      }, 600000); // 10 minutes total timeout
       
       response.data.pipe(writer);
       
@@ -97,8 +107,8 @@ async function downloadFile(url, dest, retries = 3) {
         throw error;
       }
       
-      // Exponential backoff: 1s, 2s, 4s
-      const delay = Math.pow(2, attempt - 1) * 1000;
+      // Exponential backoff: 2s, 4s, 8s
+      const delay = Math.pow(2, attempt) * 1000;
       console.log(`Retrying in ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -163,12 +173,28 @@ async function prebuild() {
         await downloadFile(comp.url, filePath);
       } catch (error) {
         console.error(`Error downloading ${comp.id}:`, error.message);
-        // For optional assets, warn and continue
-        if (comp.optional) {
-          console.warn(`⚠️  Warning: Failed to download optional asset ${comp.id}, continuing...`);
-          continue;
+        
+        // Try fallback URL if available
+        if (comp.fallbackUrl) {
+          console.warn(`⚠️  Trying fallback URL for ${comp.id}...`);
+          try {
+            await downloadFile(comp.fallbackUrl, filePath);
+          } catch (fallbackError) {
+            console.error(`Fallback also failed for ${comp.id}:`, fallbackError.message);
+            if (comp.optional) {
+              console.warn(`⚠️  Warning: Failed to download optional asset ${comp.id}, continuing...`);
+              continue;
+            }
+            throw new Error(`Failed to download ${comp.id} from both sources: ${error.message}`);
+          }
+        } else {
+          // For optional assets without fallback, warn and continue
+          if (comp.optional) {
+            console.warn(`⚠️  Warning: Failed to download optional asset ${comp.id}, continuing...`);
+            continue;
+          }
+          throw new Error(`Failed to download ${comp.id}: ${error.message}`);
         }
-        throw new Error(`Failed to download ${comp.id}: ${error.message}`);
       }
     }
 

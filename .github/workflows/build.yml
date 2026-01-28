@@ -40,6 +40,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-assets-
 
+      - name: Pre-download busybox-wasm (with retries)
+        run: |
+          mkdir -p downloads
+          # Try to download busybox-wasm with curl retries
+          if [ ! -f "downloads/busybox-1.31.1.wasm" ]; then
+            echo "Attempting to download busybox-wasm..."
+            curl -L --retry 5 --retry-delay 3 --retry-connrefused \
+              -H "User-Agent: Mozilla/5.0" \
+              -o "downloads/busybox-1.31.1.wasm" \
+              "https://registry-cdn.wapm.io/packages/wasmer/busybox/busybox-1.31.1.wasm" || \
+            echo "⚠️  busybox-wasm download failed, will try again in main prebuild"
+          fi
+
       - name: Install dependencies
         run: npm ci
 
