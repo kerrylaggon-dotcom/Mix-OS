@@ -53,5 +53,10 @@
       "assets/kernel/**/*",
       "assets/rootfs/**/*"
     ],
+    "extra": {
+      "eas": {
+        "projectId": "8bce99fb-240f-47e0-9134-7d594df56ef1"
+      }
+    }
   }
 }
