@@ -61,7 +61,8 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
         </ThemedText>
 
         <ThemedText type="body" style={styles.message}>
-          Code Server Terminal encountered an unexpected error. Press the button below to restart.
+          Code Server Terminal encountered an unexpected error. Press the button
+          below to restart.
         </ThemedText>
 
         <Pressable

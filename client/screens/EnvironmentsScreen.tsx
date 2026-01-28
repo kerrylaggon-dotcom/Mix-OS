@@ -27,11 +27,20 @@ const envTypes = [
 export default function EnvironmentsScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const { environments, addEnvironment, removeEnvironment, updateEnvironment, addLog, addTerminalOutput, components } =
-    useServer();
+  const {
+    environments,
+    addEnvironment,
+    removeEnvironment,
+    updateEnvironment,
+    addLog,
+    addTerminalOutput,
+    components,
+  } = useServer();
   const [showModal, setShowModal] = useState(false);
   const [newEnvName, setNewEnvName] = useState("");
-  const [newEnvType, setNewEnvType] = useState<"nix" | "qemu" | "ubuntu">("nix");
+  const [newEnvType, setNewEnvType] = useState<"nix" | "qemu" | "ubuntu">(
+    "nix",
+  );
 
   const requiredComponents = {
     nix: ["nix", "busybox"],
@@ -41,7 +50,7 @@ export default function EnvironmentsScreen() {
 
   const isTypeAvailable = (type: "nix" | "qemu" | "ubuntu") => {
     return requiredComponents[type].every(
-      (id) => components.find((c) => c.id === id)?.status === "downloaded"
+      (id) => components.find((c) => c.id === id)?.status === "downloaded",
     );
   };
 
@@ -69,7 +78,7 @@ export default function EnvironmentsScreen() {
       addLog("info", `Starting ${env.name}...`);
       addTerminalOutput(`$ start-env "${env.name}"`);
       addTerminalOutput(`Starting ${env.type} environment...`);
-      
+
       setTimeout(() => {
         updateEnvironment(env.id, {
           status: "running",
@@ -82,7 +91,11 @@ export default function EnvironmentsScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }, 2000);
     } else if (env.status === "running") {
-      updateEnvironment(env.id, { status: "stopped", cpuUsage: 0, memoryUsage: 0 });
+      updateEnvironment(env.id, {
+        status: "stopped",
+        cpuUsage: 0,
+        memoryUsage: 0,
+      });
       addLog("info", `${env.name} stopped`);
       addTerminalOutput(`$ stop-env "${env.name}"`);
       addTerminalOutput(`${env.name} stopped`);
@@ -103,7 +116,13 @@ export default function EnvironmentsScreen() {
     return found?.icon || "box";
   };
 
-  const renderItem = ({ item, index }: { item: Environment; index: number }) => (
+  const renderItem = ({
+    item,
+    index,
+  }: {
+    item: Environment;
+    index: number;
+  }) => (
     <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
       <Pressable
         style={({ pressed }) => [
@@ -132,11 +151,19 @@ export default function EnvironmentsScreen() {
           <View style={styles.envStats}>
             <View style={styles.statItem}>
               <Feather name="cpu" size={12} color={Colors.dark.textSecondary} />
-              <ThemedText style={styles.statValue}>{item.cpuUsage || 0}%</ThemedText>
+              <ThemedText style={styles.statValue}>
+                {item.cpuUsage || 0}%
+              </ThemedText>
             </View>
             <View style={styles.statItem}>
-              <Feather name="database" size={12} color={Colors.dark.textSecondary} />
-              <ThemedText style={styles.statValue}>{item.memoryUsage || 0}%</ThemedText>
+              <Feather
+                name="database"
+                size={12}
+                color={Colors.dark.textSecondary}
+              />
+              <ThemedText style={styles.statValue}>
+                {item.memoryUsage || 0}%
+              </ThemedText>
             </View>
           </View>
         ) : null}
@@ -145,7 +172,9 @@ export default function EnvironmentsScreen() {
           <Pressable
             style={[
               styles.envActionButton,
-              item.status === "running" ? styles.stopButton : styles.startButton,
+              item.status === "running"
+                ? styles.stopButton
+                : styles.startButton,
             ]}
             onPress={() => handleToggleEnv(item)}
             disabled={item.status === "starting"}
@@ -154,7 +183,9 @@ export default function EnvironmentsScreen() {
               name={item.status === "running" ? "square" : "play"}
               size={14}
               color={
-                item.status === "running" ? Colors.dark.error : Colors.dark.buttonText
+                item.status === "running"
+                  ? Colors.dark.error
+                  : Colors.dark.buttonText
               }
             />
             <ThemedText
@@ -195,7 +226,9 @@ export default function EnvironmentsScreen() {
         onPress={() => setShowModal(true)}
       >
         <Feather name="plus" size={18} color={Colors.dark.buttonText} />
-        <ThemedText style={styles.createFirstText}>Create Environment</ThemedText>
+        <ThemedText style={styles.createFirstText}>
+          Create Environment
+        </ThemedText>
       </Pressable>
     </View>
   );
@@ -229,7 +262,10 @@ export default function EnvironmentsScreen() {
         <View style={styles.modalOverlay}>
           <Animated.View
             entering={FadeInUp.springify()}
-            style={[styles.modalContent, { paddingBottom: insets.bottom + Spacing.lg }]}
+            style={[
+              styles.modalContent,
+              { paddingBottom: insets.bottom + Spacing.lg },
+            ]}
           >
             <View style={styles.modalHeader}>
               <ThemedText style={styles.modalTitle}>New Environment</ThemedText>
@@ -300,14 +336,22 @@ export default function EnvironmentsScreen() {
             </View>
 
             <View style={styles.requirementsNote}>
-              <Feather name="info" size={14} color={Colors.dark.textSecondary} />
+              <Feather
+                name="info"
+                size={14}
+                color={Colors.dark.textSecondary}
+              />
               <ThemedText style={styles.requirementsText}>
-                Some environment types require specific components to be downloaded first.
+                Some environment types require specific components to be
+                downloaded first.
               </ThemedText>
             </View>
 
             <Pressable
-              style={[styles.createButton, !newEnvName.trim() && styles.createButtonDisabled]}
+              style={[
+                styles.createButton,
+                !newEnvName.trim() && styles.createButtonDisabled,
+              ]}
               onPress={handleCreate}
               disabled={!newEnvName.trim()}
             >

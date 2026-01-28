@@ -5,7 +5,11 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn, FadeInRight, FadeOutLeft } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeInRight,
+  FadeOutLeft,
+} from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Colors, Spacing, BorderRadius } from "@/constants/theme";
@@ -80,7 +84,10 @@ export default function SetupWizardScreen() {
     <View
       style={[
         styles.container,
-        { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl },
+        {
+          paddingTop: insets.top + Spacing.xl,
+          paddingBottom: insets.bottom + Spacing.xl,
+        },
       ]}
     >
       <View style={styles.header}>
@@ -137,11 +144,19 @@ export default function SetupWizardScreen() {
                   />
                 </View>
                 <View style={styles.componentInfo}>
-                  <ThemedText style={styles.componentName}>{component.name}</ThemedText>
-                  <ThemedText style={styles.componentSize}>{component.size}</ThemedText>
+                  <ThemedText style={styles.componentName}>
+                    {component.name}
+                  </ThemedText>
+                  <ThemedText style={styles.componentSize}>
+                    {component.size}
+                  </ThemedText>
                 </View>
                 <Feather
-                  name={component.status === "downloaded" ? "check-circle" : "circle"}
+                  name={
+                    component.status === "downloaded"
+                      ? "check-circle"
+                      : "circle"
+                  }
                   size={18}
                   color={
                     component.status === "downloaded"
@@ -161,7 +176,11 @@ export default function SetupWizardScreen() {
           <View style={styles.completeContainer}>
             <View style={styles.featureList}>
               <View style={styles.featureItem}>
-                <Feather name="terminal" size={16} color={Colors.dark.primary} />
+                <Feather
+                  name="terminal"
+                  size={16}
+                  color={Colors.dark.primary}
+                />
                 <ThemedText style={styles.featureText}>
                   Interactive terminal with command support
                 </ThemedText>
@@ -179,7 +198,11 @@ export default function SetupWizardScreen() {
                 </ThemedText>
               </View>
               <View style={styles.featureItem}>
-                <Feather name="download" size={16} color={Colors.dark.primary} />
+                <Feather
+                  name="download"
+                  size={16}
+                  color={Colors.dark.primary}
+                />
                 <ThemedText style={styles.featureText}>
                   Download manager for components
                 </ThemedText>
@@ -203,7 +226,11 @@ export default function SetupWizardScreen() {
           <ThemedText style={styles.nextButtonText}>
             {currentStep === steps.length - 1 ? "Get Started" : "Continue"}
           </ThemedText>
-          <Feather name="arrow-right" size={20} color={Colors.dark.buttonText} />
+          <Feather
+            name="arrow-right"
+            size={20}
+            color={Colors.dark.buttonText}
+          />
         </Pressable>
       </View>
     </View>

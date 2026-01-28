@@ -71,7 +71,9 @@ export default function LogsScreen() {
       <View style={styles.header}>
         <View style={styles.headerInfo}>
           <ThemedText style={styles.headerTitle}>Server Logs</ThemedText>
-          <ThemedText style={styles.headerCount}>{logs.length} entries</ThemedText>
+          <ThemedText style={styles.headerCount}>
+            {logs.length} entries
+          </ThemedText>
         </View>
         <Pressable style={styles.clearButton} onPress={handleClear}>
           <Feather name="trash-2" size={16} color={Colors.dark.textSecondary} />
@@ -90,7 +92,11 @@ export default function LogsScreen() {
         {logs.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIcon}>
-              <Feather name="file-text" size={48} color={Colors.dark.textSecondary} />
+              <Feather
+                name="file-text"
+                size={48}
+                color={Colors.dark.textSecondary}
+              />
             </View>
             <ThemedText style={styles.emptyTitle}>No Logs</ThemedText>
             <ThemedText style={styles.emptySubtitle}>
@@ -101,7 +107,8 @@ export default function LogsScreen() {
           logs.map((log, index) => {
             const showDate =
               index === 0 ||
-              formatDate(log.timestamp) !== formatDate(logs[index - 1].timestamp);
+              formatDate(log.timestamp) !==
+                formatDate(logs[index - 1].timestamp);
 
             return (
               <View key={log.id}>
@@ -115,7 +122,10 @@ export default function LogsScreen() {
                   </View>
                 ) : null}
                 <View
-                  style={[styles.logEntry, { backgroundColor: getLevelBg(log.level) }]}
+                  style={[
+                    styles.logEntry,
+                    { backgroundColor: getLevelBg(log.level) },
+                  ]}
                 >
                   <View style={styles.logMeta}>
                     <ThemedText style={styles.logTime}>
@@ -128,13 +138,18 @@ export default function LogsScreen() {
                       ]}
                     >
                       <ThemedText
-                        style={[styles.logLevel, { color: getLevelColor(log.level) }]}
+                        style={[
+                          styles.logLevel,
+                          { color: getLevelColor(log.level) },
+                        ]}
                       >
                         {log.level.toUpperCase()}
                       </ThemedText>
                     </View>
                   </View>
-                  <ThemedText style={styles.logMessage}>{log.message}</ThemedText>
+                  <ThemedText style={styles.logMessage}>
+                    {log.message}
+                  </ThemedText>
                 </View>
               </View>
             );

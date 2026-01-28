@@ -39,7 +39,9 @@ export default function DownloadManagerScreen() {
   const insets = useSafeAreaInsets();
   const { components, downloadComponent, addLog } = useServer();
 
-  const downloadedCount = components.filter((c) => c.status === "downloaded").length;
+  const downloadedCount = components.filter(
+    (c) => c.status === "downloaded",
+  ).length;
   const totalSize = components.reduce((acc, c) => {
     const size = parseInt(c.size.replace(/[^0-9]/g, ""), 10);
     return acc + (isNaN(size) ? 0 : size);
@@ -86,13 +88,24 @@ export default function DownloadManagerScreen() {
         </View>
 
         {downloadedCount < components.length ? (
-          <Pressable style={styles.downloadAllButton} onPress={handleDownloadAll}>
-            <Feather name="download-cloud" size={18} color={Colors.dark.buttonText} />
+          <Pressable
+            style={styles.downloadAllButton}
+            onPress={handleDownloadAll}
+          >
+            <Feather
+              name="download-cloud"
+              size={18}
+              color={Colors.dark.buttonText}
+            />
             <ThemedText style={styles.downloadAllText}>Download All</ThemedText>
           </Pressable>
         ) : (
           <View style={styles.allDownloadedBadge}>
-            <Feather name="check-circle" size={16} color={Colors.dark.success} />
+            <Feather
+              name="check-circle"
+              size={16}
+              color={Colors.dark.success}
+            />
             <ThemedText style={styles.allDownloadedText}>
               All components installed
             </ThemedText>
@@ -127,7 +140,9 @@ export default function DownloadManagerScreen() {
                 />
               </View>
               <View style={styles.componentInfo}>
-                <ThemedText style={styles.componentName}>{component.name}</ThemedText>
+                <ThemedText style={styles.componentName}>
+                  {component.name}
+                </ThemedText>
                 <ThemedText style={styles.componentDesc}>
                   {component.description}
                 </ThemedText>
@@ -161,7 +176,10 @@ export default function DownloadManagerScreen() {
               <View style={styles.progressContainer}>
                 <View style={styles.progressBar}>
                   <View
-                    style={[styles.progressFill, { width: `${component.progress}%` }]}
+                    style={[
+                      styles.progressFill,
+                      { width: `${component.progress}%` },
+                    ]}
                   />
                 </View>
               </View>
@@ -173,25 +191,41 @@ export default function DownloadManagerScreen() {
                   style={styles.downloadButton}
                   onPress={() => handleDownload(component.id)}
                 >
-                  <Feather name="download" size={14} color={Colors.dark.buttonText} />
-                  <ThemedText style={styles.downloadButtonText}>Download</ThemedText>
+                  <Feather
+                    name="download"
+                    size={14}
+                    color={Colors.dark.buttonText}
+                  />
+                  <ThemedText style={styles.downloadButtonText}>
+                    Download
+                  </ThemedText>
                 </Pressable>
               ) : component.status === "downloaded" ? (
                 <View style={styles.installedRow}>
                   <Pressable style={styles.actionButtonOutline}>
-                    <Feather name="refresh-cw" size={14} color={Colors.dark.primary} />
+                    <Feather
+                      name="refresh-cw"
+                      size={14}
+                      color={Colors.dark.primary}
+                    />
                     <ThemedText style={styles.actionButtonOutlineText}>
                       Update
                     </ThemedText>
                   </Pressable>
                   <Pressable style={styles.actionButtonOutline}>
-                    <Feather name="trash-2" size={14} color={Colors.dark.error} />
+                    <Feather
+                      name="trash-2"
+                      size={14}
+                      color={Colors.dark.error}
+                    />
                   </Pressable>
                 </View>
               ) : component.status === "downloading" ? (
                 <Pressable style={styles.cancelButton}>
                   <Feather name="x" size={14} color={Colors.dark.error} />
-                  <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+                  <ThemedText style={styles.cancelButtonText}>
+                    Cancel
+                  </ThemedText>
                 </Pressable>
               ) : null}
             </View>

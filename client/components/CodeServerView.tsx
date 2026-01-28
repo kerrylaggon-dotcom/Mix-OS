@@ -16,12 +16,14 @@ import { Colors, Spacing, BorderRadius, Fonts } from "@/constants/theme";
 import { useServer } from "@/context/ServerContext";
 
 export default function CodeServerView() {
-  const { codeServerUrl, setCodeServerUrl, status, components, addLog } = useServer();
+  const { codeServerUrl, setCodeServerUrl, status, components, addLog } =
+    useServer();
   const [inputUrl, setInputUrl] = useState(codeServerUrl || "");
   const [isConnecting, setIsConnecting] = useState(false);
   const [showWebView, setShowWebView] = useState(false);
 
-  const codeServerDownloaded = components.find((c) => c.id === "code-server")?.status === "downloaded";
+  const codeServerDownloaded =
+    components.find((c) => c.id === "code-server")?.status === "downloaded";
 
   const handleConnect = () => {
     if (!inputUrl.trim()) return;
@@ -94,7 +96,11 @@ export default function CodeServerView() {
 
         {!codeServerDownloaded ? (
           <View style={styles.warningBox}>
-            <Feather name="alert-triangle" size={16} color={Colors.dark.warning} />
+            <Feather
+              name="alert-triangle"
+              size={16}
+              color={Colors.dark.warning}
+            />
             <ThemedText style={styles.warningText}>
               code-server not downloaded. Go to Download Manager to install it.
             </ThemedText>
@@ -117,7 +123,10 @@ export default function CodeServerView() {
           </View>
 
           <Pressable
-            style={[styles.connectButton, !inputUrl.trim() && styles.buttonDisabled]}
+            style={[
+              styles.connectButton,
+              !inputUrl.trim() && styles.buttonDisabled,
+            ]}
             onPress={handleConnect}
             disabled={!inputUrl.trim() || isConnecting}
           >

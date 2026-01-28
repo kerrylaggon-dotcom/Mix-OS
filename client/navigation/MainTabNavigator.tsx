@@ -26,11 +26,14 @@ export type MainTabParamList = {
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function CustomHeader() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
   const { status, components } = useServer();
 
-  const downloadedCount = components.filter((c) => c.status === "downloaded").length;
+  const downloadedCount = components.filter(
+    (c) => c.status === "downloaded",
+  ).length;
   const totalCount = components.length;
 
   return (

@@ -15,122 +15,91 @@ import { ThemedText } from "@/components/ThemedText";
 import { Colors, Spacing, BorderRadius, Fonts } from "@/constants/theme";
 import { useServer } from "@/context/ServerContext";
 
+const API_BASE = "http://localhost:5000/api";
+
 export default function TerminalView() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [input, setInput] = useState("");
-  const { terminalOutput, addTerminalOutput, clearTerminalOutput, status, setStatus, addLog, components, downloadComponent } =
-    useServer();
+  const {
+    terminalOutput,
+    addTerminalOutput,
+    clearTerminalOutput,
+    status,
+    setStatus,
+    addLog,
+    components,
+    downloadComponent,
+    startCodeServer,
+    stopCodeServer,
+    checkCodeServerStatus,
+  } = useServer();
 
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [terminalOutput]);
 
-  const handleCommand = () => {
+  const handleCommand = async () => {
     if (!input.trim()) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const cmd = input.trim().toLowerCase();
-    addTerminalOutput(`$ ${input}`);
+    const fullCmd = input.trim();
+    const [cmd, ...args] = fullCmd.split(" ");
+    const lowerCmd = cmd.toLowerCase();
+    addTerminalOutput(`$ ${fullCmd}`);
     setInput("");
 
-    switch (cmd) {
-      case "help":
-        addTerminalOutput("Available commands:");
-        addTerminalOutput("  help       - Show this help message");
-        addTerminalOutput("  status     - Show server status");
-        addTerminalOutput("  start      - Start code-server");
-        addTerminalOutput("  stop       - Stop code-server");
-        addTerminalOutput("  download   - Download components");
-        addTerminalOutput("  ls         - List files");
-        addTerminalOutput("  clear      - Clear terminal");
-        addTerminalOutput("  version    - Show version info");
-        addTerminalOutput("");
-        break;
-
-      case "status":
-        addTerminalOutput(`Server status: ${status}`);
-        addTerminalOutput(`Components downloaded: ${components.filter((c) => c.status === "downloaded").length}/${components.length}`);
-        addTerminalOutput("");
-        break;
-
-      case "start":
-        if (status === "stopped") {
-          setStatus("starting");
+    // Special commands
+    if (["start", "stop", "download"].includes(lowerCmd)) {
+      // Handle locally or via API
+      switch (lowerCmd) {
+        case "start":
           addTerminalOutput("Starting code-server...");
-          addLog("info", "Starting code-server from terminal");
-          setTimeout(() => {
-            setStatus("running");
-            addTerminalOutput("code-server started on port 8080");
+          startCodeServer();
+          break;
+        case "stop":
+          addTerminalOutput("Stopping code-server...");
+          stopCodeServer();
+          break;
+        case "download":
+          if (args.length === 0) {
+            addTerminalOutput("Available components:");
+            components.forEach((c) => {
+              addTerminalOutput(`  ${c.id} (${c.status}) - ${c.size}`);
+            });
             addTerminalOutput("");
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          }, 1500);
-        } else {
-          addTerminalOutput("Server is already running");
-          addTerminalOutput("");
-        }
-        break;
-
-      case "stop":
-        if (status === "running") {
-          setStatus("stopped");
-          addTerminalOutput("code-server stopped");
-          addLog("info", "Stopped code-server from terminal");
-          addTerminalOutput("");
-        } else {
-          addTerminalOutput("Server is not running");
-          addTerminalOutput("");
-        }
-        break;
-
-      case "download":
-        addTerminalOutput("Available components:");
-        components.forEach((c) => {
-          addTerminalOutput(`  ${c.id} (${c.status}) - ${c.size}`);
-        });
-        addTerminalOutput("");
-        addTerminalOutput("Use 'download <component>' to install");
-        addTerminalOutput("");
-        break;
-
-      case "ls":
-        addTerminalOutput("drwxr-xr-x  2 user user 4096 Jan 28 12:00 .");
-        addTerminalOutput("drwxr-xr-x  3 user user 4096 Jan 28 12:00 ..");
-        addTerminalOutput("-rw-r--r--  1 user user  220 Jan 28 12:00 .bashrc");
-        addTerminalOutput("drwxr-xr-x  2 user user 4096 Jan 28 12:00 workspace");
-        addTerminalOutput("");
-        break;
-
-      case "clear":
-        clearTerminalOutput();
-        break;
-
-      case "version":
-        addTerminalOutput("Code Server Terminal v0.1.0");
-        addTerminalOutput("Phase 0 - AI Development Preview");
-        addTerminalOutput("Built with Expo for cross-platform deployment");
-        addTerminalOutput("");
-        break;
-
-      default:
-        if (cmd.startsWith("download ")) {
-          const componentId = cmd.replace("download ", "").trim();
-          const component = components.find((c) => c.id === componentId);
-          if (component) {
-            if (component.status === "downloaded") {
-              addTerminalOutput(`${component.name} is already downloaded`);
-              addTerminalOutput("");
-            } else {
-              downloadComponent(componentId);
-            }
+            addTerminalOutput("Use 'download <component>' to install");
+            addTerminalOutput("");
           } else {
-            addTerminalOutput(`Component '${componentId}' not found`);
-            addTerminalOutput("");
+            const componentId = args[0];
+            const component = components.find((c) => c.id === componentId);
+            if (component) {
+              downloadComponent(componentId);
+            } else {
+              addTerminalOutput(`Component '${componentId}' not found`);
+              addTerminalOutput("");
+            }
           }
-        } else {
-          addTerminalOutput(`command not found: ${cmd}`);
-          addTerminalOutput("Type 'help' for available commands");
-          addTerminalOutput("");
+          break;
+      }
+    } else {
+      // Execute via API
+      try {
+        const response = await fetch(`${API_BASE}/execute`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ command: fullCmd }),
+        });
+        const data = await response.json();
+        if (data.output) {
+          data.output
+            .split("\n")
+            .forEach((line: string) => addTerminalOutput(line));
         }
+        addTerminalOutput("");
+      } catch (error) {
+        addTerminalOutput(`Error: ${(error as Error).message}`);
+        addTerminalOutput("");
+      }
     }
   };
 
@@ -169,7 +138,11 @@ export default function TerminalView() {
           returnKeyType="send"
         />
         <Pressable style={styles.sendButton} onPress={handleCommand}>
-          <Feather name="corner-down-left" size={18} color={Colors.dark.primary} />
+          <Feather
+            name="corner-down-left"
+            size={18}
+            color={Colors.dark.primary}
+          />
         </Pressable>
       </View>
     </KeyboardAvoidingView>

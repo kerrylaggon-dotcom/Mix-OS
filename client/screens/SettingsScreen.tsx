@@ -1,5 +1,12 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, Switch, Pressable, TextInput } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Switch,
+  Pressable,
+  TextInput,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -10,7 +17,13 @@ import { useServer } from "@/context/ServerContext";
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { settings, updateSettings, codeServerUrl, setCodeServerUrl, components } = useServer();
+  const {
+    settings,
+    updateSettings,
+    codeServerUrl,
+    setCodeServerUrl,
+    components,
+  } = useServer();
 
   const handleToggle = (key: keyof typeof settings, value: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -24,12 +37,17 @@ export default function SettingsScreen() {
     }
   };
 
-  const downloadedCount = components.filter((c) => c.status === "downloaded").length;
+  const downloadedCount = components.filter(
+    (c) => c.status === "downloaded",
+  ).length;
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.xl }]}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: insets.bottom + Spacing.xl },
+      ]}
     >
       <View style={styles.section}>
         <ThemedText style={styles.sectionTitle}>General</ThemedText>
@@ -40,7 +58,9 @@ export default function SettingsScreen() {
               <Feather name="power" size={18} color={Colors.dark.primary} />
             </View>
             <View style={styles.settingText}>
-              <ThemedText style={styles.settingLabel}>Auto-start Server</ThemedText>
+              <ThemedText style={styles.settingLabel}>
+                Auto-start Server
+              </ThemedText>
               <ThemedText style={styles.settingDescription}>
                 Start code-server when app opens
               </ThemedText>
@@ -49,7 +69,10 @@ export default function SettingsScreen() {
           <Switch
             value={settings.autoStart}
             onValueChange={(value) => handleToggle("autoStart", value)}
-            trackColor={{ false: Colors.dark.border, true: Colors.dark.primary }}
+            trackColor={{
+              false: Colors.dark.border,
+              true: Colors.dark.primary,
+            }}
             thumbColor={Colors.dark.text}
           />
         </View>
@@ -69,14 +92,19 @@ export default function SettingsScreen() {
           <Switch
             value={settings.autoSetupVm}
             onValueChange={(value) => handleToggle("autoSetupVm", value)}
-            trackColor={{ false: Colors.dark.border, true: Colors.dark.primary }}
+            trackColor={{
+              false: Colors.dark.border,
+              true: Colors.dark.primary,
+            }}
             thumbColor={Colors.dark.text}
           />
         </View>
       </View>
 
       <View style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>Server Configuration</ThemedText>
+        <ThemedText style={styles.sectionTitle}>
+          Server Configuration
+        </ThemedText>
 
         <View style={styles.inputRow}>
           <ThemedText style={styles.inputLabel}>Server Port</ThemedText>
@@ -113,7 +141,8 @@ export default function SettingsScreen() {
                 key={type}
                 style={[
                   styles.envOption,
-                  settings.defaultEnvironment === type && styles.envOptionSelected,
+                  settings.defaultEnvironment === type &&
+                    styles.envOptionSelected,
                 ]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -123,10 +152,15 @@ export default function SettingsScreen() {
                 <ThemedText
                   style={[
                     styles.envOptionText,
-                    settings.defaultEnvironment === type && styles.envOptionTextSelected,
+                    settings.defaultEnvironment === type &&
+                      styles.envOptionTextSelected,
                   ]}
                 >
-                  {type === "nix" ? "NixOS" : type === "qemu" ? "QEMU" : "Ubuntu"}
+                  {type === "nix"
+                    ? "NixOS"
+                    : type === "qemu"
+                      ? "QEMU"
+                      : "Ubuntu"}
                 </ThemedText>
               </Pressable>
             ))}
@@ -139,7 +173,9 @@ export default function SettingsScreen() {
 
         <View style={styles.statusCard}>
           <View style={styles.statusRow}>
-            <ThemedText style={styles.statusLabel}>Components Downloaded</ThemedText>
+            <ThemedText style={styles.statusLabel}>
+              Components Downloaded
+            </ThemedText>
             <ThemedText style={styles.statusValue}>
               {downloadedCount}/{components.length}
             </ThemedText>
@@ -166,13 +202,17 @@ export default function SettingsScreen() {
               <Feather name="terminal" size={24} color={Colors.dark.primary} />
             </View>
             <View style={styles.aboutInfo}>
-              <ThemedText style={styles.aboutTitle}>Code Server Terminal</ThemedText>
-              <ThemedText style={styles.aboutVersion}>Version 0.1.0 - Phase 0</ThemedText>
+              <ThemedText style={styles.aboutTitle}>
+                Code Server Terminal
+              </ThemedText>
+              <ThemedText style={styles.aboutVersion}>
+                Version 0.1.0 - Phase 0
+              </ThemedText>
             </View>
           </View>
           <ThemedText style={styles.aboutDescription}>
-            Run code-server, QEMU, and development tools on Android.
-            Built with Expo for cross-platform deployment.
+            Run code-server, QEMU, and development tools on Android. Built with
+            Expo for cross-platform deployment.
           </ThemedText>
           <View style={styles.aboutBadges}>
             <View style={styles.badge}>

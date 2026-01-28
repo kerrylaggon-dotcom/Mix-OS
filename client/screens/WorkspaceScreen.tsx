@@ -1,5 +1,12 @@
 import React, { useState, useRef } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Dimensions, Platform } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Dimensions,
+  Platform,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
@@ -49,10 +56,7 @@ export default function WorkspaceScreen() {
         {tabs.map((tab, index) => (
           <Pressable
             key={tab.id}
-            style={[
-              styles.tab,
-              currentPage === index && styles.tabActive,
-            ]}
+            style={[styles.tab, currentPage === index && styles.tabActive]}
             onPress={() => handleTabPress(index)}
           >
             <Feather

@@ -19,7 +19,14 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.codeserver.terminal"
+      "package": "com.codeserver.terminal",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "output": "single",
@@ -40,8 +47,11 @@
       ],
       "expo-web-browser"
     ],
-    "experiments": {
-      "reactCompiler": true
-    }
+    "assetBundlePatterns": [
+      "**/*",
+      "assets/wasm/**/*",
+      "assets/kernel/**/*",
+      "assets/rootfs/**/*"
+    ],
   }
 }

@@ -66,16 +66,29 @@ A sandboxed Android application for running code-server (VS Code in browser), po
 - [x] Setup wizard for first run
 - [x] Dark terminal theme
 
-### Phase 1 (Next) - Backend Integration
-- [ ] Real file system downloads
-- [ ] WebSocket for real-time logs
-- [ ] Code-server process management
-- [ ] Environment creation/deletion backend
+### Phase 1 (Complete) - Backend Integration & Deep Architecture
+- [x] Real file system downloads (axios, streaming)
+- [x] WebSocket for real-time logs (ws server)
+- [x] Code-server process management (spawn, lifecycle)
+- [x] Environment creation/deletion backend (storage, CRUD)
+- [x] QEMU VM spawning with kernel/rootfs/initramfs
+- [x] WASM sandbox execution (WebAssembly native API)
+- [x] Prebuild script for asset preparation
+- [x] Testing infrastructure (Jest + supertest)
+- [x] Structured logging (Winston)
+- [x] Security (rate limiting, input validation)
+- [x] Error handling & resilience
 
-### Phase 2 - Native Integration
-- [ ] Build APK using Expo EAS on GitHub Actions
-- [ ] NixOS/QEMU integration
-- [ ] Native terminal emulation
+### Phase 2 (Current) - Native Integration & Build
+- [ ] EAS Build configuration (eas.json)
+- [ ] GitHub Actions workflow for APK build
+- [ ] Native terminal emulation (Xterm.js integration)
+- [ ] Android native module setup
+- [ ] Backend native bridge communication
+- [ ] NixOS/QEMU integration verification
+- [ ] APK signing & release configuration
+- [ ] Testing on real devices
+- [ ] Production deployment pipeline
 
 ## User Preferences
 - Dark theme only (developer preference)
@@ -96,10 +109,9 @@ A sandboxed Android application for running code-server (VS Code in browser), po
 - `version` - Show version info
 
 ## Recent Changes
-- 2026-01-28: Updated to swipeable workspace navigation
-  - Added bottom tab navigation
-  - Created WorkspaceScreen with PagerView for swipe navigation
-  - Built interactive TerminalView with command support
-  - Built CodeServerView with WebView integration
-  - Created DownloadManagerScreen for component downloads
-  - Updated ServerContext with component download tracking
+- 2026-01-28: Completed Phase 1 (Backend Integration & Deep Architecture)
+  - Implemented QEMU VM management with environment persistence
+  - WASM sandbox execution with WebAssembly native API
+  - Prebuild script for component extraction
+  - Jest testing + Winston logging + Rate limiting
+  - Now starting Phase 2 (Native Integration & Build)
