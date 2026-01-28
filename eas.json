@@ -21,8 +21,10 @@
       }
     },
     "production": {
+      "channel": "production",
       "android": {
         "buildType": "app-bundle",
+        "distribution": "store",
         "resourceClass": "large"
       }
     }
