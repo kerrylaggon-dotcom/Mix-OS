@@ -105,7 +105,7 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           echo "Building with profile: ${{ steps.profile.outputs.profile }}"
-          npx eas-cli build --platform android --non-interactive --profile ${{ steps.profile.outputs.profile }}
+          npx eas-cli build --platform android --non-interactive --profile ${{ steps.profile.outputs.profile }} --wait
         timeout-minutes: 120
 
       - name: Build Summary
