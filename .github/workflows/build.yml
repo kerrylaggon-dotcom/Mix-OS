@@ -10,7 +10,7 @@ on:
       build_type:
         description: 'Build type'
         required: true
-        default: 'preview'
+        default: 'production'
         type: choice
         options:
           - preview
@@ -101,13 +101,12 @@ jobs:
           fi
 
       - name: Build with EAS
-        if: ${{ secrets.EXPO_TOKEN != '' }}
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           echo "Building with profile: ${{ steps.profile.outputs.profile }}"
-          eas build --platform android --non-interactive --profile ${{ steps.profile.outputs.profile }}
-        timeout-minutes: 45
+          npx eas-cli build --platform android --non-interactive --profile ${{ steps.profile.outputs.profile }}
+        timeout-minutes: 120
 
       - name: Build Summary
         if: always()
