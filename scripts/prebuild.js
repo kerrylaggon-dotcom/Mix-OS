@@ -26,8 +26,9 @@ const components = [
   },
   {
     id: "busybox-wasm",
-    url: "https://registry-cdn.wapm.io/packages/wasmer/busybox/busybox-1.31.1.wasm",
-    extract: false,
+    url: "https://github.com/wasmerio/wasmer/releases/download/3.1.0/wasmer-linux-amd64.tar.gz",
+    extract: true,
+    optional: true,  // Make this optional since CDN is unreliable
   },
 ];
 
@@ -162,9 +163,9 @@ async function prebuild() {
         await downloadFile(comp.url, filePath);
       } catch (error) {
         console.error(`Error downloading ${comp.id}:`, error.message);
-        // For non-critical assets (like busybox-wasm), warn and continue
-        if (comp.id === "busybox-wasm") {
-          console.warn(`⚠️  Warning: Failed to download ${comp.id}, continuing without it...`);
+        // For optional assets, warn and continue
+        if (comp.optional) {
+          console.warn(`⚠️  Warning: Failed to download optional asset ${comp.id}, continuing...`);
           continue;
         }
         throw new Error(`Failed to download ${comp.id}: ${error.message}`);
