@@ -209,12 +209,34 @@ async function prebuild() {
     }
 
     // Copy to assets for APK inclusion
+    // Skip if file doesn't exist (e.g., optional download failed)
+    if (!comp.extract && !fs.existsSync(filePath)) {
+      console.warn(`⚠️  Skipping copy for ${comp.id} - file not found`);
+      continue;
+    }
+    if (comp.extract && !fs.existsSync(extractDir)) {
+      console.warn(`⚠️  Skipping copy for ${comp.id} - extracted directory not found`);
+      continue;
+    }
+    
     const assetPath = path.join(assetsDir, comp.id);
     if (!fs.existsSync(assetPath)) {
       try {
         if (comp.extract) {
-          // Copy extracted directory
-          fs.cpSync(extractDir, assetPath, { recursive: true });
+          // Copy extracted directory, excluding problematic files
+          fs.cpSync(extractDir, assetPath, { 
+            recursive: true,
+            filter: (src, dest) => {
+              // Skip problematic directories that cause permission issues
+              if (src.includes('/var/run/') || 
+                  src.includes('/var/cache/') ||
+                  src.includes('/proc/') ||
+                  src.includes('/sys/')) {
+                return false;
+              }
+              return true;
+            }
+          });
         } else {
           // Copy file
           fs.mkdirSync(path.dirname(assetPath), { recursive: true });

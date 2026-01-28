@@ -101,9 +101,17 @@ jobs:
         if: always()
         run: |
           echo "Cleaning up problematic asset files..."
+          # Fix permissions recursively
           chmod -R 755 assets 2>/dev/null || true
-          rm -rf assets/alpine/var/run/chrony 2>/dev/null || true
-          rm -rf assets/alpine/var/cache/* 2>/dev/null || true
+          find assets -type f -exec chmod 644 {} \; 2>/dev/null || true
+          
+          # Remove problematic system directories that cause permission issues
+          find assets -type d -name "chrony" -exec rm -rf {} + 2>/dev/null || true
+          find assets -type d -path "*/var/run/*" -exec rm -rf {} + 2>/dev/null || true
+          find assets -type d -path "*/var/cache/*" -exec rm -rf {} + 2>/dev/null || true
+          find assets -type d -path "*/proc/*" -exec rm -rf {} + 2>/dev/null || true
+          find assets -type d -path "*/sys/*" -exec rm -rf {} + 2>/dev/null || true
+          
           echo "✓ Asset permissions and cleanup completed"
 
       - name: Upload build artifacts
