@@ -31,13 +31,51 @@ const components = [
 
 async function downloadFile(url, dest) {
   console.log(`Downloading ${url} to ${dest}`);
-  const response = await axios.get(url, { responseType: "stream" });
-  const writer = fs.createWriteStream(dest);
-  response.data.pipe(writer);
-  return new Promise((resolve, reject) => {
-    writer.on("finish", resolve);
-    writer.on("error", reject);
-  });
+  try {
+    const response = await axios.get(url, { 
+      responseType: "stream",
+      timeout: 60000, // 60 seconds timeout
+      maxRedirects: 5,
+      // Set larger timeout for slow CDN connections
+      httpAgent: { timeout: 60000 },
+      httpsAgent: { timeout: 60000 }
+    });
+    
+    const writer = fs.createWriteStream(dest);
+    
+    // Set a timeout for the entire download
+    const downloadTimeout = setTimeout(() => {
+      writer.destroy(new Error("Download timeout exceeded"));
+      response.data.destroy();
+    }, 300000); // 5 minutes total timeout
+    
+    response.data.pipe(writer);
+    
+    return new Promise((resolve, reject) => {
+      writer.on("finish", () => {
+        clearTimeout(downloadTimeout);
+        resolve();
+      });
+      writer.on("error", (err) => {
+        clearTimeout(downloadTimeout);
+        // Clean up the partial file
+        try {
+          fs.unlinkSync(dest);
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+        reject(err);
+      });
+      response.data.on("error", (err) => {
+        clearTimeout(downloadTimeout);
+        writer.destroy();
+        reject(err);
+      });
+    });
+  } catch (error) {
+    console.error(`Failed to download ${url}:`, error.message);
+    throw error;
+  }
 }
 
 async function extractTar(file, dest) {
@@ -57,10 +95,29 @@ async function extractTar(file, dest) {
   }
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args);
-    child.on("close", (code) =>
-      code === 0 ? resolve() : reject(new Error(`Extraction failed: ${code}`)),
-    );
-    child.on("error", reject);
+    
+    let errorOutput = "";
+    child.stderr.on("data", (data) => {
+      errorOutput += data.toString();
+    });
+    
+    const extractTimeout = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error(`Extraction timeout for ${file}`));
+    }, 600000); // 10 minutes timeout
+    
+    child.on("close", (code) => {
+      clearTimeout(extractTimeout);
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Extraction failed with code ${code}: ${errorOutput}`));
+      }
+    });
+    child.on("error", (err) => {
+      clearTimeout(extractTimeout);
+      reject(err);
+    });
   });
 }
 
@@ -75,28 +132,66 @@ async function prebuild() {
     const extractDir = path.join(downloadsDir, comp.id);
 
     if (!fs.existsSync(filePath)) {
-      await downloadFile(comp.url, filePath);
+      try {
+        await downloadFile(comp.url, filePath);
+      } catch (error) {
+        console.error(`Error downloading ${comp.id}:`, error.message);
+        throw new Error(`Failed to download ${comp.id}: ${error.message}`);
+      }
     }
 
     if (comp.extract && !fs.existsSync(extractDir)) {
       fs.mkdirSync(extractDir, { recursive: true });
-      await extractTar(filePath, extractDir);
+      try {
+        await extractTar(filePath, extractDir);
+      } catch (error) {
+        console.error(`Error extracting ${comp.id}:`, error.message);
+        throw new Error(`Failed to extract ${comp.id}: ${error.message}`);
+      }
     }
 
     // Copy to assets for APK inclusion
     const assetPath = path.join(assetsDir, comp.id);
     if (!fs.existsSync(assetPath)) {
-      if (comp.extract) {
-        // Copy extracted directory
-        fs.cpSync(extractDir, assetPath, { recursive: true });
-      } else {
-        // Copy file
-        fs.copyFileSync(filePath, path.join(assetPath, fileName));
+      try {
+        if (comp.extract) {
+          // Copy extracted directory
+          fs.cpSync(extractDir, assetPath, { recursive: true });
+        } else {
+          // Copy file
+          fs.mkdirSync(path.dirname(assetPath), { recursive: true });
+          fs.copyFileSync(filePath, path.join(assetPath, fileName));
+        }
+        console.log(`✓ Prepared ${comp.id}`);
+      } catch (error) {
+        console.error(`Error copying ${comp.id}:`, error.message);
+        throw new Error(`Failed to copy ${comp.id}: ${error.message}`);
       }
     }
   }
 
-  console.log("Prebuild completed");
+  console.log("✅ Prebuild completed successfully");
 }
+
+// Handle graceful shutdown
+process.on("SIGTERM", () => {
+  console.error("⚠️ Process terminated");
+  process.exit(128);
+});
+
+process.on("SIGINT", () => {
+  console.error("⚠️ Process interrupted");
+  process.exit(128);
+});
+
+// Run prebuild and exit with appropriate code
+prebuild()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error("❌ Prebuild failed:", error.message);
+    process.exit(1);
+  });
 
 prebuild().catch(console.error);
